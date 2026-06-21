@@ -1,0 +1,34 @@
+[
+  {
+    "id": "chapter1",
+    "desktop": "/Assets/story/chapter-1.mp4",
+    "mobile": "/Assets/story/chapter-1-mobile.m4v",
+    "poster": "/Assets/story/chapter-1-poster.jpg",
+    "focalPoint": "50% 50%",
+    "replacementStatus": "fallback"
+  },
+  {
+    "id": "chapter2",
+    "desktop": "/Assets/story/chapter-2.mp4",
+    "mobile": "/Assets/story/chapter-2-mobile.m4v",
+    "poster": "/Assets/story/chapter-2-poster.jpg",
+    "focalPoint": "50% 50%",
+    "replacementStatus": "fallback"
+  },
+  {
+    "id": "chapter3",
+    "desktop": "/Assets/story/chapter-3.mp4",
+    "mobile": "/Assets/story/chapter-3-mobile.m4v",
+    "poster": "/Assets/story/chapter-3-poster.jpg",
+    "focalPoint": "50% 50%",
+    "replacementStatus": "fallback"
+  },
+  {
+    "id": "chapter4",
+    "desktop": "/Assets/story/chapter-4.mp4",
+    "mobile": "/Assets/story/chapter-4-mobile.m4v",
+    "poster": "/Assets/story/chapter-4-poster.jpg",
+    "focalPoint": "50% 50%",
+    "replacementStatus": "fallback"
+  }
+]
