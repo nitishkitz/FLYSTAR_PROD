@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Phone, Mail, Package, Plane, FileText, AlertCircle,
-  CheckCircle2, Send, Building2, User as UserIcon, Edit3,
+  CheckCircle2, Send, Building2, User as UserIcon, Edit3, Camera, X, Upload,
+  CreditCard,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { STATUS_META, STATUS_ORDER, fmtDate, fmtINR } from '../../lib/shipmentMeta';
 import StatusPill from '../../components/portal/StatusPill';
+import SignaturePad from '../../components/portal/SignaturePad';
 
 const NEXT_STATUS = ['en_route_to_pickup', 'picked_up', 'at_hub', 'packed', 'dispatched', 'in_transit', 'customs', 'out_for_delivery', 'delivered', 'exception'];
 
@@ -20,6 +22,12 @@ export default function ShipmentDetail() {
   const [newStatus, setNewStatus] = useState('en_route_to_pickup');
   const [note, setNote] = useState('');
   const [loc, setLoc] = useState('');
+  // POD
+  const [receiverName, setReceiverName] = useState('');
+  const [signature, setSignature] = useState(null);
+  const [podPhoto, setPodPhoto] = useState(null);
+  // Pay
+  const [paying, setPaying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,12 +41,41 @@ export default function ShipmentDetail() {
 
   const submitStatus = async (e) => {
     e.preventDefault();
+    if (newStatus === 'delivered') {
+      if (!receiverName.trim()) { setError('Receiver name is required for delivery.'); return; }
+      if (!signature) { setError('Signature is required to mark as delivered.'); return; }
+    }
     setBusy(true); setError('');
     try {
-      await api.post(`/shipments/${id}/status`, { status: newStatus, note, location: loc });
+      const body = { status: newStatus, note, location: loc };
+      if (newStatus === 'delivered') {
+        body.receiver_name = receiverName;
+        body.signature_base64 = signature;
+        body.pod_photo_base64 = podPhoto;
+      }
+      await api.post(`/shipments/${id}/status`, body);
       setShowStatus(false); setNote(''); setLoc('');
+      setReceiverName(''); setSignature(null); setPodPhoto(null);
       await load();
     } catch (e) { setError(errMsg(e)); } finally { setBusy(false); }
+  };
+
+  const onPodPhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setError('Photo too large — max 2MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setPodPhoto(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const payInvoice = async () => {
+    if (!confirm(`Mark invoice ${s.invoice_number} as PAID? (Pay Now placeholder — no real gateway)`)) return;
+    setPaying(true); setError('');
+    try {
+      await api.post(`/shipments/${id}/pay`, { method: 'card', note: 'Demo payment' });
+      await load();
+    } catch (e) { setError(errMsg(e)); } finally { setPaying(false); }
   };
 
   if (!s) return <p className="muted">Loading…</p>;
@@ -57,12 +94,17 @@ export default function ShipmentDetail() {
           <div className="row" style={{ gap: 10 }}>
             <Link to=".." className="btn btn-ghost btn-tiny" onClick={(e) => { e.preventDefault(); navigate(-1); }}><ArrowLeft size={14} />Back</Link>
             <StatusPill status={s.status} />
+            {s.payment_status === 'paid' && <span className="pill tone-green" data-testid="payment-paid-pill"><b />Paid</span>}
+            {s.payment_status === 'unpaid' && <span className="pill tone-amber"><b />Unpaid</span>}
           </div>
           <h1 className="mt-12" style={{ fontFamily: 'ui-monospace, monospace', letterSpacing: '0.04em' }}>{s.awb}</h1>
           <p>{s.pickup?.city} → {s.delivery?.city || s.delivery?.country} · {fmtDate(s.created_at)}</p>
         </div>
         <div className="portal-topbar-actions">
           <Link to={`/portal/shipment/${id}/invoice`} className="btn btn-ghost" data-testid="open-invoice"><FileText size={16} />Invoice</Link>
+          {user.role === 'customer' && s.payment_status !== 'paid' && (
+            <button onClick={payInvoice} disabled={paying} className="btn btn-primary" data-testid="pay-now-btn"><CreditCard size={16} />{paying ? 'Processing…' : 'Pay now'}</button>
+          )}
           {canAccept && <button onClick={accept} disabled={busy} className="btn btn-primary" data-testid="accept-btn"><CheckCircle2 size={16} />Accept order</button>}
           {needWaybill && <Link to={`/portal/employee/shipment/${id}/waybill`} className="btn btn-primary" data-testid="fill-waybill-btn"><Edit3 size={16} />Fill waybill</Link>}
           {canUpdate && <button onClick={() => setShowStatus(true)} className="btn btn-ghost" data-testid="update-status-btn"><Send size={16} />Update status</button>}
@@ -126,11 +168,33 @@ export default function ShipmentDetail() {
             {s.contains_restricted && <p style={{ color: 'var(--portal-amber)', marginTop: 8 }}><AlertCircle size={14} style={{ display: 'inline', marginRight: 6 }} />Contains restricted items</p>}
             {s.proof_photo_base64 && (
               <div className="mt-18">
-                <small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Proof photo</small>
+                <small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Pickup proof photo</small>
                 <img src={s.proof_photo_base64} alt="Proof" style={{ width: '100%', maxHeight: 320, objectFit: 'cover', borderRadius: 12, marginTop: 8 }} data-testid="proof-photo" />
               </div>
             )}
           </div>
+
+          {s.pod && (
+            <div className="glass mt-18" data-testid="pod-card">
+              <div className="glass-header"><div><h3>Proof of delivery</h3><p>Captured at delivery.</p></div></div>
+              {s.pod.receiver_name && <p style={{ margin: 0 }}><small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Received by</small><br /><span style={{ color: 'white', fontWeight: 650 }}>{s.pod.receiver_name}</span></p>}
+              {s.pod.signature_base64 && (
+                <div className="mt-12">
+                  <small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Signature</small>
+                  <div style={{ background: 'white', borderRadius: 12, padding: 8, marginTop: 6 }}>
+                    <img src={s.pod.signature_base64} alt="Signature" style={{ width: '100%', maxHeight: 160, objectFit: 'contain' }} data-testid="pod-signature-img" />
+                  </div>
+                </div>
+              )}
+              {s.pod.pod_photo_base64 && (
+                <div className="mt-12">
+                  <small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Delivery photo</small>
+                  <img src={s.pod.pod_photo_base64} alt="POD" style={{ width: '100%', maxHeight: 280, objectFit: 'cover', borderRadius: 12, marginTop: 6 }} data-testid="pod-photo-img" />
+                </div>
+              )}
+              {s.pod.delivered_at && <p className="muted mt-12" style={{ margin: 0 }}>{fmtDate(s.pod.delivered_at)}</p>}
+            </div>
+          )}
 
           <div className="glass mt-18">
             <div className="glass-header"><div><h3>Customer</h3></div></div>
@@ -175,7 +239,7 @@ export default function ShipmentDetail() {
 
       {showStatus && (
         <div className="modal-backdrop" onClick={() => setShowStatus(false)}>
-          <div className="modal dark-form" onClick={(e) => e.stopPropagation()} data-testid="status-modal">
+          <div className="modal dark-form" onClick={(e) => e.stopPropagation()} data-testid="status-modal" style={{ maxWidth: 620 }}>
             <h3>Update shipment status</h3>
             <label className="field"><span>New status</span>
               <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} data-testid="status-select">
@@ -184,6 +248,37 @@ export default function ShipmentDetail() {
             </label>
             <label className="field mt-12"><span>Location</span><input value={loc} onChange={(e) => setLoc(e.target.value)} placeholder="e.g. Mumbai Cargo (BOM)" data-testid="status-location" /></label>
             <label className="field mt-12"><span>Note (optional)</span><textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Any context about this update" data-testid="status-note" /></label>
+
+            {newStatus === 'delivered' && (
+              <div className="mt-18" data-testid="pod-block">
+                <hr className="divider" />
+                <h4 className="subsection-title"><CheckCircle2 />Proof of delivery</h4>
+                <label className="field"><span>Receiver name *</span><input required value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Person who received the parcel" data-testid="receiver-name" /></label>
+
+                <div className="mt-12">
+                  <span style={{ display: 'block', color: 'var(--portal-text-soft)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 8 }}>Signature *</span>
+                  <SignaturePad onChange={setSignature} />
+                </div>
+
+                <div className="mt-18">
+                  <span style={{ display: 'block', color: 'var(--portal-text-soft)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 8 }}>Delivery photo (optional, max 2MB)</span>
+                  {podPhoto ? (
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <img src={podPhoto} alt="Delivery proof" style={{ width: 200, borderRadius: 12 }} data-testid="pod-preview" />
+                      <button type="button" onClick={() => setPodPhoto(null)} className="btn btn-outline btn-tiny" style={{ marginLeft: 10 }}><X size={12} />Remove</button>
+                    </div>
+                  ) : (
+                    <label className="btn btn-outline" style={{ display: 'inline-flex', cursor: 'pointer' }}>
+                      <Camera size={16} />Capture photo
+                      <input type="file" accept="image/*" capture="environment" onChange={onPodPhoto} style={{ display: 'none' }} data-testid="pod-photo-input" />
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {error && <p className="auth-error mt-12">{error}</p>}
+
             <div className="modal-actions">
               <button onClick={() => setShowStatus(false)} className="btn btn-outline">Cancel</button>
               <button onClick={submitStatus} className="btn btn-primary" disabled={busy} data-testid="status-submit"><Send size={14} />Push update</button>

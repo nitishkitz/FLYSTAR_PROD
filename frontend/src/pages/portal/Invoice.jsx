@@ -1,17 +1,31 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, CreditCard, CheckCircle2 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useAuth } from '../../lib/AuthContext';
 import { fmtDate, fmtINR } from '../../lib/shipmentMeta';
 
 export default function Invoice() {
   const { id } = useParams();
+  const { user, errMsg } = useAuth();
   const [s, setS] = useState(null);
-  useEffect(() => { api.get(`/shipments/${id}`).then((r) => setS(r.data)); }, [id]);
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = () => api.get(`/shipments/${id}`).then((r) => setS(r.data));
+  useEffect(() => { load(); }, [id]);
+
+  const pay = async () => {
+    if (!confirm(`Mark invoice ${s.invoice_number} as PAID? (Pay Now placeholder)`)) return;
+    setPaying(true); setError('');
+    try { await api.post(`/shipments/${id}/pay`, { method: 'card', note: 'Demo' }); await load(); }
+    catch (e) { setError(errMsg(e)); } finally { setPaying(false); }
+  };
 
   if (!s) return <p className="muted">Loading…</p>;
-
   const lineWeight = s.actual_weight_kg || s.approx_weight_kg;
+  const paid = s.payment_status === 'paid';
+  const canPay = !paid && (user?.role === 'customer' || user?.role === 'admin');
 
   return (
     <div data-testid="invoice-page">
@@ -22,11 +36,23 @@ export default function Invoice() {
         </div>
         <div className="portal-topbar-actions">
           <Link to={`/portal/shipment/${id}`} className="btn btn-ghost"><ArrowLeft size={16} />Back</Link>
+          {canPay && <button onClick={pay} disabled={paying} className="btn btn-primary" data-testid="invoice-pay-btn"><CreditCard size={16} />{paying ? 'Processing…' : 'Pay now'}</button>}
           <button onClick={() => window.print()} className="btn btn-primary" data-testid="print-invoice"><Printer size={16} />Print</button>
         </div>
       </div>
 
-      <div className="invoice-paper" data-testid="invoice-paper">
+      {error && <p className="auth-error">{error}</p>}
+
+      <div className="invoice-paper" data-testid="invoice-paper" style={{ position: 'relative' }}>
+        {paid && (
+          <div data-testid="paid-stamp" style={{
+            position: 'absolute', top: 130, right: 56,
+            transform: 'rotate(-12deg)', padding: '10px 22px',
+            border: '3px solid #10b981', color: '#10b981',
+            fontFamily: "'Outfit Variable', sans-serif", fontWeight: 800, fontSize: 28,
+            letterSpacing: '0.18em', borderRadius: 8, opacity: 0.85,
+          }}>PAID</div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <img src="/Assets/flystar-wordmark.png" alt="Flystar" style={{ height: 60 }} />
@@ -77,7 +103,13 @@ export default function Invoice() {
 
         <div className="invoice-total">
           <small style={{ color: '#607087', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total payable</small><br />
-          <span style={{ color: '#d91a2a' }}>{fmtINR(s.price_inr)}</span>
+          <span style={{ color: paid ? '#10b981' : '#d91a2a' }}>{fmtINR(s.price_inr)}</span>
+          {paid && (
+            <div style={{ marginTop: 8, fontSize: 14, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', fontFamily: 'Inter, sans-serif' }}>
+              <CheckCircle2 size={16} />Paid via {s.payment_method || 'card'} · Receipt {s.payment_receipt}
+              {s.paid_at && <span style={{ color: '#607087', fontWeight: 500 }}>· {fmtDate(s.paid_at)}</span>}
+            </div>
+          )}
         </div>
 
         <p style={{ marginTop: 32, fontSize: 12, color: '#607087', lineHeight: 1.6 }}>

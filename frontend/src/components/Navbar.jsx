@@ -46,6 +46,9 @@ export default function Navbar() {
             <Phone aria-hidden="true" />
             <span>{contactDetails.phonePrimary}</span>
           </a>
+          <Link to="/track" className="button button-ghost header-cta" data-testid="navbar-track-link" style={{ textDecoration: 'none' }}>
+            Track
+          </Link>
           <Link to={portalHref} className="button button-secondary header-cta" data-testid="navbar-portal-link">
             <LogIn aria-hidden="true" />{portalLabel}
           </Link>
@@ -73,6 +76,7 @@ export default function Navbar() {
           ))}
         </nav>
         <div className="mobile-menu-contact">
+          <Link to="/track" data-testid="mobile-track-link">Track shipment</Link>
           <Link to={portalHref} data-testid="mobile-portal-link">{portalLabel}</Link>
           <a href={`tel:${contactDetails.phonePrimary}`}>Call {contactDetails.phonePrimary}</a>
           <a href={contactDetails.whatsapp} target="_blank" rel="noreferrer">WhatsApp enquiry</a>

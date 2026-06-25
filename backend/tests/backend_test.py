@@ -286,3 +286,214 @@ class TestAdmin:
         assert r2.status_code == 200
         r3 = requests.get(f"{API}/shipments/{sid}", headers=_hdr(admin_tok), timeout=15)
         assert r3.status_code == 404
+
+
+# ============================================================
+# Iteration 2 — NEW FEATURES: public track, POD, pay invoice
+# ============================================================
+
+# ---------------- Public Tracking (unauthenticated) ----------------
+class TestPublicTracking:
+    def _make_shipment(self, tokens):
+        cust_tok, _ = tokens["customer"]
+        payload = {
+            "pickup": {"name": "PT Sender", "phone": "+919999111133", "line1": "1 PT Lane",
+                       "city": "Mumbai", "state": "MH", "country": "India", "postal_code": "400001"},
+            "delivery": {"name": "PT Receiver", "phone": "+971500000111", "line1": "2 Marina",
+                          "city": "Dubai", "state": "", "country": "UAE", "postal_code": "00000"},
+            "shipment_type": "parcel", "service": "express", "approx_weight_kg": 1.0,
+            "contents": "TEST public track shipment",
+        }
+        r = requests.post(f"{API}/shipments", headers=_hdr(cust_tok), json=payload, timeout=20)
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    def test_public_track_no_auth(self, tokens):
+        s = self._make_shipment(tokens)
+        # Call WITHOUT Authorization header
+        r = requests.get(f"{API}/shipments/track/{s['awb']}", timeout=15)
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["awb"] == s["awb"]
+        assert data["status"] == "requested"
+        assert "events" in data and len(data["events"]) >= 1
+        assert data["origin_city"] == "Mumbai"
+        assert data["destination_city"] == "Dubai"
+
+    def test_public_track_case_insensitive(self, tokens):
+        s = self._make_shipment(tokens)
+        # lowercase should also resolve
+        r = requests.get(f"{API}/shipments/track/{s['awb'].lower()}", timeout=15)
+        assert r.status_code == 200
+        assert r.json()["awb"] == s["awb"]
+
+    def test_public_track_invalid_awb(self):
+        r = requests.get(f"{API}/shipments/track/FLYNOPE00", timeout=15)
+        assert r.status_code == 404
+
+    def test_route_order_track_before_id(self, tokens):
+        """Critical: /shipments/track/{awb} must be defined BEFORE /shipments/{id}.
+        If route ordering is wrong, the 'track' route would be swallowed by /shipments/{id}
+        and require auth. Verify by hitting it with no auth — must return 200, not 401."""
+        s = self._make_shipment(tokens)
+        r = requests.get(f"{API}/shipments/track/{s['awb']}", timeout=15)
+        assert r.status_code == 200, f"public track collided with /shipments/{{id}}: {r.status_code}"
+
+
+# ---------------- Proof of Delivery (POD) ----------------
+@pytest.fixture(scope="module")
+def pod_shipment(tokens):
+    """Create + accept + waybill a shipment ready for delivery."""
+    cust_tok, _ = tokens["customer"]
+    emp_tok, _ = tokens["employee"]
+    payload = {
+        "pickup": {"name": "POD Sender", "phone": "+911", "line1": "A",
+                    "city": "Hyderabad", "country": "India"},
+        "delivery": {"name": "POD Receiver", "phone": "+9712", "line1": "B",
+                      "city": "Dubai", "country": "UAE"},
+        "shipment_type": "parcel", "service": "priority", "approx_weight_kg": 2.0,
+        "contents": "TEST POD shipment",
+    }
+    r = requests.post(f"{API}/shipments", headers=_hdr(cust_tok), json=payload, timeout=20)
+    assert r.status_code == 200
+    sid = r.json()["id"]
+    requests.post(f"{API}/shipments/{sid}/accept", headers=_hdr(emp_tok), timeout=15)
+    wb = {
+        "sender": {"name": "S", "phone": "+911", "line1": "A", "city": "Hyderabad", "country": "India"},
+        "receiver": {"name": "R", "phone": "+9712", "line1": "B", "city": "Dubai", "country": "UAE"},
+        "actual_weight_kg": 2.0, "length_cm": 20, "width_cm": 15, "height_cm": 10,
+        "piece_count": 1, "declared_value_inr": 1000, "packaging": "box",
+    }
+    requests.post(f"{API}/shipments/{sid}/waybill", headers=_hdr(emp_tok), json=wb, timeout=15)
+    return sid
+
+
+class TestPOD:
+    SIG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+    PHOTO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+    def test_delivered_with_pod_persists(self, tokens, pod_shipment):
+        emp_tok, _ = tokens["employee"]
+        body = {
+            "status": "delivered",
+            "note": "Handed to receiver",
+            "location": "Dubai Marina",
+            "receiver_name": "Mr. Receiver",
+            "signature_base64": self.SIG,
+            "pod_photo_base64": self.PHOTO,
+        }
+        r = requests.post(f"{API}/shipments/{pod_shipment}/status",
+                          headers=_hdr(emp_tok), json=body, timeout=20)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["status"] == "delivered"
+        # POD persisted
+        assert d.get("pod"), "pod object missing on shipment"
+        assert d["pod"]["receiver_name"] == "Mr. Receiver"
+        assert d["pod"]["signature_base64"].startswith("data:image/")
+        assert d["pod"]["pod_photo_base64"].startswith("data:image/")
+        # GET verifies persistence
+        cust_tok, _ = tokens["customer"]
+        r2 = requests.get(f"{API}/shipments/{pod_shipment}", headers=_hdr(cust_tok), timeout=15)
+        assert r2.status_code == 200
+        assert r2.json()["pod"]["receiver_name"] == "Mr. Receiver"
+
+
+# ---------------- Pay Invoice (Pay Now placeholder) ----------------
+class TestPayInvoice:
+    def _fresh_shipment(self, tokens):
+        cust_tok, _ = tokens["customer"]
+        payload = {
+            "pickup": {"name": "PAY Sender", "phone": "+911", "line1": "A",
+                        "city": "Hyderabad", "country": "India"},
+            "delivery": {"name": "PAY Receiver", "phone": "+9712", "line1": "B",
+                          "city": "Dubai", "country": "UAE"},
+            "shipment_type": "parcel", "service": "economy", "approx_weight_kg": 0.7,
+            "contents": "TEST pay invoice",
+        }
+        r = requests.post(f"{API}/shipments", headers=_hdr(cust_tok), json=payload, timeout=20)
+        assert r.status_code == 200
+        return r.json()
+
+    def test_customer_pays_own(self, tokens):
+        cust_tok, _ = tokens["customer"]
+        s = self._fresh_shipment(tokens)
+        assert s["payment_status"] == "unpaid"
+        r = requests.post(f"{API}/shipments/{s['id']}/pay", headers=_hdr(cust_tok),
+                          json={"method": "card", "note": "TEST pay"}, timeout=15)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["payment_status"] == "paid"
+        assert d["payment_method"] == "card"
+        assert d["payment_receipt"].startswith("RCPT-")
+        assert d["paid_amount_inr"] == s["price_inr"]
+        # GET persistence
+        r2 = requests.get(f"{API}/shipments/{s['id']}", headers=_hdr(cust_tok), timeout=15)
+        assert r2.json()["payment_status"] == "paid"
+
+    def test_double_pay_blocked(self, tokens):
+        cust_tok, _ = tokens["customer"]
+        s = self._fresh_shipment(tokens)
+        r1 = requests.post(f"{API}/shipments/{s['id']}/pay", headers=_hdr(cust_tok),
+                           json={"method": "upi"}, timeout=15)
+        assert r1.status_code == 200
+        r2 = requests.post(f"{API}/shipments/{s['id']}/pay", headers=_hdr(cust_tok),
+                           json={"method": "upi"}, timeout=15)
+        assert r2.status_code == 400
+        assert "paid" in r2.text.lower()
+
+    def test_other_customer_cannot_pay(self, tokens):
+        cust_tok, _ = tokens["customer"]
+        s = self._fresh_shipment(tokens)
+        # Make another customer
+        email = f"TEST_payer_{uuid.uuid4().hex[:6]}@example.com"
+        rr = requests.post(f"{API}/auth/register", json={
+            "email": email, "password": "Pass1234", "name": "Other Payer", "phone": "+919998880011"
+        }, timeout=15)
+        other_tok = rr.json()["access_token"]
+        r = requests.post(f"{API}/shipments/{s['id']}/pay", headers=_hdr(other_tok),
+                          json={"method": "card"}, timeout=15)
+        assert r.status_code == 403
+
+    def test_admin_can_pay_any(self, tokens):
+        admin_tok = tokens["admin"]
+        s = self._fresh_shipment(tokens)
+        r = requests.post(f"{API}/shipments/{s['id']}/pay", headers=_hdr(admin_tok),
+                          json={"method": "cash"}, timeout=15)
+        assert r.status_code == 200
+        assert r.json()["payment_status"] == "paid"
+
+
+# ---------------- Email Integration (non-blocking) ----------------
+class TestEmailNonBlocking:
+    def test_status_change_returns_fast_even_if_email_fails(self, tokens):
+        """The status endpoint must return 200 fast regardless of Resend outcome."""
+        cust_tok, _ = tokens["customer"]
+        emp_tok, _ = tokens["employee"]
+        # Make + accept + waybill new shipment
+        payload = {
+            "pickup": {"name": "EMAIL S", "phone": "+911", "line1": "A", "city": "Hyderabad", "country": "India"},
+            "delivery": {"name": "EMAIL R", "phone": "+9712", "line1": "B", "city": "Dubai", "country": "UAE"},
+            "shipment_type": "parcel", "service": "economy", "approx_weight_kg": 1.0,
+            "contents": "TEST email shipment",
+        }
+        rc = requests.post(f"{API}/shipments", headers=_hdr(cust_tok), json=payload, timeout=20)
+        assert rc.status_code == 200
+        sid = rc.json()["id"]
+        requests.post(f"{API}/shipments/{sid}/accept", headers=_hdr(emp_tok), timeout=15)
+        wb = {
+            "sender": {"name": "S", "phone": "+911", "line1": "A", "city": "Hyderabad", "country": "India"},
+            "receiver": {"name": "R", "phone": "+9712", "line1": "B", "city": "Dubai", "country": "UAE"},
+            "actual_weight_kg": 1.0, "length_cm": 10, "width_cm": 10, "height_cm": 10,
+            "piece_count": 1, "declared_value_inr": 500, "packaging": "box",
+        }
+        requests.post(f"{API}/shipments/{sid}/waybill", headers=_hdr(emp_tok), json=wb, timeout=15)
+        # Time the status update
+        t0 = time.time()
+        r = requests.post(f"{API}/shipments/{sid}/status", headers=_hdr(emp_tok),
+                          json={"status": "in_transit", "note": "TEST", "location": "Hub"}, timeout=15)
+        elapsed = time.time() - t0
+        assert r.status_code == 200, r.text
+        # Email is fire-and-forget — endpoint shouldn't be slow regardless of Resend result.
+        # Allow generous bound (4s) to absorb network jitter to preview proxy.
+        assert elapsed < 6.0, f"status endpoint too slow ({elapsed:.2f}s) — email call may be blocking"

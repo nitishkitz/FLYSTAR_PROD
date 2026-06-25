@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import LandingPage from './pages/LandingPage';
 import './portal.css';
+import './public-track.css';
 
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
+const PublicTrack = lazy(() => import('./pages/PublicTrack'));
 const PortalLayout = lazy(() => import('./pages/portal/PortalLayout'));
 const CustomerDashboard = lazy(() => import('./pages/portal/CustomerDashboard'));
 const NewPickup = lazy(() => import('./pages/portal/NewPickup'));
@@ -52,6 +54,8 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/track" element={<PublicTrack />} />
+            <Route path="/track/:awb" element={<PublicTrack />} />
             <Route path="/portal" element={<PortalRouter />} />
             <Route element={<Protected><PortalLayout /></Protected>}>
               {/* Customer */}
