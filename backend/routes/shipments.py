@@ -1,4 +1,5 @@
 """Shipments: create, list, get, accept, waybill, status updates, admin edits, public track, invoice payment."""
+import asyncio
 import secrets
 from typing import Optional
 
@@ -41,12 +42,12 @@ def _route_str(s: dict) -> str:
     return f"{p.get('city', '?')} → {d.get('city') or d.get('country', '?')}"
 
 
-async def _fire_email(s: dict, status: str, location: str, note: str):
-    """Fire-and-forget status email."""
+def _fire_email(s: dict, status: str, location: str, note: str):
+    """Fire-and-forget — does NOT block the request path."""
     if status not in EMAIL_STATUSES:
         return
     try:
-        await send_status_email(
+        asyncio.create_task(send_status_email(
             awb=s.get("awb", ""),
             customer_email=s.get("customer_email", ""),
             customer_name=s.get("customer_name", ""),
@@ -54,7 +55,7 @@ async def _fire_email(s: dict, status: str, location: str, note: str):
             location=location or "",
             note=note or "",
             route=_route_str(s),
-        )
+        ))
     except Exception:
         pass
 
@@ -106,7 +107,7 @@ async def create_pickup_request(payload: PickupRequestIn,
     }
     res = await db.shipments.insert_one(doc)
     doc["_id"] = res.inserted_id
-    await _fire_email(doc, "requested", payload.pickup.city, "Pickup request created")
+    _fire_email(doc, "requested", payload.pickup.city, "Pickup request created")
     return shipment_to_dict(doc)
 
 
@@ -198,7 +199,7 @@ async def accept_shipment(shipment_id: str, user=Depends(require_roles("employee
          "$push": {"events": event}}
     )
     s = await db.shipments.find_one({"_id": ObjectId(shipment_id)})
-    await _fire_email(s, "assigned", s["pickup"].get("city", ""), event["note"])
+    _fire_email(s, "assigned", s["pickup"].get("city", ""), event["note"])
     return shipment_to_dict(s)
 
 
@@ -235,7 +236,7 @@ async def fill_waybill(shipment_id: str, payload: WaybillFillIn,
             "$push": {"events": event}}
     )
     s = await db.shipments.find_one({"_id": ObjectId(shipment_id)})
-    await _fire_email(s, "picked_up", payload.sender.city, event["note"])
+    _fire_email(s, "picked_up", payload.sender.city, event["note"])
     return shipment_to_dict(s)
 
 
@@ -273,7 +274,7 @@ async def update_status(shipment_id: str, payload: StatusUpdateIn,
         {"$set": set_doc, "$push": {"events": event}}
     )
     s = await db.shipments.find_one({"_id": ObjectId(shipment_id)})
-    await _fire_email(s, payload.status, payload.location or "", payload.note or "")
+    _fire_email(s, payload.status, payload.location or "", payload.note or "")
     return shipment_to_dict(s)
 
 

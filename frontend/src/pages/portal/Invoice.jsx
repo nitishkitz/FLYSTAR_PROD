@@ -16,7 +16,6 @@ export default function Invoice() {
   useEffect(() => { load(); }, [id]);
 
   const pay = async () => {
-    if (!confirm(`Mark invoice ${s.invoice_number} as PAID? (Pay Now placeholder)`)) return;
     setPaying(true); setError('');
     try { await api.post(`/shipments/${id}/pay`, { method: 'card', note: 'Demo' }); await load(); }
     catch (e) { setError(errMsg(e)); } finally { setPaying(false); }

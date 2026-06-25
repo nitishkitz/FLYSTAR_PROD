@@ -70,7 +70,6 @@ export default function ShipmentDetail() {
   };
 
   const payInvoice = async () => {
-    if (!confirm(`Mark invoice ${s.invoice_number} as PAID? (Pay Now placeholder — no real gateway)`)) return;
     setPaying(true); setError('');
     try {
       await api.post(`/shipments/${id}/pay`, { method: 'card', note: 'Demo payment' });
@@ -268,9 +267,9 @@ export default function ShipmentDetail() {
                       <button type="button" onClick={() => setPodPhoto(null)} className="btn btn-outline btn-tiny" style={{ marginLeft: 10 }}><X size={12} />Remove</button>
                     </div>
                   ) : (
-                    <label className="btn btn-outline" style={{ display: 'inline-flex', cursor: 'pointer' }}>
+                    <label className="btn btn-outline" style={{ display: 'inline-flex', cursor: 'pointer' }} data-testid="pod-photo-label">
                       <Camera size={16} />Capture photo
-                      <input type="file" accept="image/*" capture="environment" onChange={onPodPhoto} style={{ display: 'none' }} data-testid="pod-photo-input" />
+                      <input type="file" accept="image/*" capture="environment" onChange={onPodPhoto} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }} data-testid="pod-photo-input" />
                     </label>
                   )}
                 </div>

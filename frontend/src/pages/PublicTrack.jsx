@@ -22,7 +22,7 @@ export default function PublicTrack() {
       const { data } = await axios.get(`${BASE}/api/shipments/track/${id.trim().toUpperCase()}`);
       setData(data);
     } catch (e) {
-      setError(e?.response?.data?.detail || 'Could not find that AWB. Please check and try again.');
+      setError(e?.response?.data?.detail === 'Shipment not found' ? 'Could not find that AWB. Please check and try again.' : (e?.response?.data?.detail || 'Could not find that AWB. Please check and try again.'));
     } finally { setBusy(false); }
   };
 
