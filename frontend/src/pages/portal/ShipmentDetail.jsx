@@ -123,8 +123,8 @@ export default function ShipmentDetail() {
             const done = i <= currentIdx;
             return (
               <div key={st} style={{ flex: '1 1 80px', minWidth: 80 }}>
-                <div style={{ height: 4, borderRadius: 2, background: done ? 'linear-gradient(90deg, #ff4655, #ff8157)' : 'rgba(255,255,255,0.08)' }} />
-                <small style={{ display: 'block', marginTop: 8, color: done ? 'white' : 'var(--portal-text-muted)', fontSize: 11, letterSpacing: '0.04em' }}>{meta.label}</small>
+                <div style={{ height: 4, borderRadius: 2, background: done ? 'linear-gradient(90deg, #ff4655, #ff8157)' : 'var(--p-border)' }} />
+                <small style={{ display: 'block', marginTop: 8, color: done ? 'var(--p-ink)' : 'var(--p-muted-soft)', fontSize: 11, letterSpacing: '0.04em' }}>{meta.label}</small>
               </div>
             );
           })}
@@ -138,14 +138,14 @@ export default function ShipmentDetail() {
             <div className="glass-header"><div><h3>Addresses</h3><p>Pickup & delivery details.</p></div></div>
             <div className="field-grid-2">
               <div>
-                <small style={{ color: 'var(--portal-text-soft)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>PICKUP</small>
-                <p style={{ margin: '8px 0 0', color: 'white', fontWeight: 650 }}>{s.pickup?.name}</p>
+                <small style={{ color: 'var(--p-muted)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>PICKUP</small>
+                <p style={{ margin: '8px 0 0', color: 'var(--p-ink)', fontWeight: 650 }}>{s.pickup?.name}</p>
                 <p className="muted" style={{ margin: '4px 0' }}><Phone size={12} style={{ display: 'inline', marginRight: 6 }} />{s.pickup?.phone}</p>
                 <p className="muted" style={{ margin: 0 }}><MapPin size={12} style={{ display: 'inline', marginRight: 6 }} />{s.pickup?.line1}, {s.pickup?.city}, {s.pickup?.state}, {s.pickup?.country} {s.pickup?.postal_code}</p>
               </div>
               <div>
-                <small style={{ color: 'var(--portal-text-soft)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>DELIVERY</small>
-                <p style={{ margin: '8px 0 0', color: 'white', fontWeight: 650 }}>{s.delivery?.name}</p>
+                <small style={{ color: 'var(--p-muted)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>DELIVERY</small>
+                <p style={{ margin: '8px 0 0', color: 'var(--p-ink)', fontWeight: 650 }}>{s.delivery?.name}</p>
                 <p className="muted" style={{ margin: '4px 0' }}><Phone size={12} style={{ display: 'inline', marginRight: 6 }} />{s.delivery?.phone}</p>
                 <p className="muted" style={{ margin: 0 }}><MapPin size={12} style={{ display: 'inline', marginRight: 6 }} />{s.delivery?.line1}, {s.delivery?.city}, {s.delivery?.state}, {s.delivery?.country} {s.delivery?.postal_code}</p>
               </div>
@@ -155,15 +155,15 @@ export default function ShipmentDetail() {
           <div className="glass mt-18">
             <div className="glass-header"><div><h3>Consignment</h3></div></div>
             <div className="field-grid-3">
-              <div><small className="muted">Service</small><p style={{ margin: '6px 0 0', color: 'white', fontWeight: 650, textTransform: 'capitalize' }}><Plane size={14} style={{ display: 'inline', marginRight: 6 }} />{s.service}</p></div>
-              <div><small className="muted">Type</small><p style={{ margin: '6px 0 0', color: 'white', fontWeight: 650, textTransform: 'capitalize' }}><Package size={14} style={{ display: 'inline', marginRight: 6 }} />{s.shipment_type}</p></div>
-              <div><small className="muted">Weight</small><p style={{ margin: '6px 0 0', color: 'white', fontWeight: 650 }}>{s.actual_weight_kg || s.approx_weight_kg} kg</p></div>
-              <div><small className="muted">Pieces</small><p style={{ margin: '6px 0 0', color: 'white', fontWeight: 650 }}>{s.piece_count || '—'}</p></div>
-              <div><small className="muted">Declared value</small><p style={{ margin: '6px 0 0', color: 'white', fontWeight: 650 }}>{s.declared_value_inr ? fmtINR(s.declared_value_inr) : '—'}</p></div>
-              <div><small className="muted">Price</small><p style={{ margin: '6px 0 0', color: 'white', fontWeight: 650 }}>{fmtINR(s.price_inr)}</p></div>
+              <div><small className="muted">Service</small><p style={{ margin: '6px 0 0', color: 'var(--p-ink)', fontWeight: 650, textTransform: 'capitalize' }}><Plane size={14} style={{ display: 'inline', marginRight: 6 }} />{s.service}</p></div>
+              <div><small className="muted">Type</small><p style={{ margin: '6px 0 0', color: 'var(--p-ink)', fontWeight: 650, textTransform: 'capitalize' }}><Package size={14} style={{ display: 'inline', marginRight: 6 }} />{s.shipment_type}</p></div>
+              <div><small className="muted">Weight</small><p style={{ margin: '6px 0 0', color: 'var(--p-ink)', fontWeight: 650 }}>{s.actual_weight_kg || s.approx_weight_kg} kg</p></div>
+              <div><small className="muted">Pieces</small><p style={{ margin: '6px 0 0', color: 'var(--p-ink)', fontWeight: 650 }}>{s.piece_count || '—'}</p></div>
+              <div><small className="muted">Declared value</small><p style={{ margin: '6px 0 0', color: 'var(--p-ink)', fontWeight: 650 }}>{s.declared_value_inr ? fmtINR(s.declared_value_inr) : '—'}</p></div>
+              <div><small className="muted">Price</small><p style={{ margin: '6px 0 0', color: 'var(--p-ink)', fontWeight: 650 }}>{fmtINR(s.price_inr)}</p></div>
             </div>
-            {s.contents && <p className="mt-12 muted">Contents: <span style={{ color: 'white' }}>{s.contents}</span></p>}
-            {s.notes && <p className="muted">Notes: <span style={{ color: 'white' }}>{s.notes}</span></p>}
+            {s.contents && <p className="mt-12 muted">Contents: <span style={{ color: 'var(--p-ink)' }}>{s.contents}</span></p>}
+            {s.notes && <p className="muted">Notes: <span style={{ color: 'var(--p-ink)' }}>{s.notes}</span></p>}
             {s.contains_restricted && <p style={{ color: 'var(--portal-amber)', marginTop: 8 }}><AlertCircle size={14} style={{ display: 'inline', marginRight: 6 }} />Contains restricted items</p>}
             {s.proof_photo_base64 && (
               <div className="mt-18">
@@ -176,7 +176,7 @@ export default function ShipmentDetail() {
           {s.pod && (
             <div className="glass mt-18" data-testid="pod-card">
               <div className="glass-header"><div><h3>Proof of delivery</h3><p>Captured at delivery.</p></div></div>
-              {s.pod.receiver_name && <p style={{ margin: 0 }}><small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Received by</small><br /><span style={{ color: 'white', fontWeight: 650 }}>{s.pod.receiver_name}</span></p>}
+              {s.pod.receiver_name && <p style={{ margin: 0 }}><small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Received by</small><br /><span style={{ color: 'var(--p-ink)', fontWeight: 650 }}>{s.pod.receiver_name}</span></p>}
               {s.pod.signature_base64 && (
                 <div className="mt-12">
                   <small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Signature</small>
@@ -197,14 +197,14 @@ export default function ShipmentDetail() {
 
           <div className="glass mt-18">
             <div className="glass-header"><div><h3>Customer</h3></div></div>
-            <p style={{ margin: '0', color: 'white', fontWeight: 650 }}><UserIcon size={14} style={{ display: 'inline', marginRight: 6 }} />{s.customer_name}</p>
+            <p style={{ margin: '0', color: 'var(--p-ink)', fontWeight: 650 }}><UserIcon size={14} style={{ display: 'inline', marginRight: 6 }} />{s.customer_name}</p>
             <p className="muted" style={{ margin: '6px 0 0' }}><Mail size={12} style={{ display: 'inline', marginRight: 6 }} />{s.customer_email}</p>
             <p className="muted" style={{ margin: '6px 0 0' }}><Phone size={12} style={{ display: 'inline', marginRight: 6 }} />{s.customer_phone}</p>
             {s.assigned_employee_name && (
               <>
                 <hr className="divider" />
                 <small className="muted" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>Assigned employee</small>
-                <p style={{ margin: '6px 0 0', color: 'white', fontWeight: 650 }}><Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{s.assigned_employee_name}</p>
+                <p style={{ margin: '6px 0 0', color: 'var(--p-ink)', fontWeight: 650 }}><Building2 size={14} style={{ display: 'inline', marginRight: 6 }} />{s.assigned_employee_name}</p>
               </>
             )}
           </div>
@@ -255,12 +255,12 @@ export default function ShipmentDetail() {
                 <label className="field"><span>Receiver name *</span><input required value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Person who received the parcel" data-testid="receiver-name" /></label>
 
                 <div className="mt-12">
-                  <span style={{ display: 'block', color: 'var(--portal-text-soft)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 8 }}>Signature *</span>
+                  <span style={{ display: 'block', color: 'var(--p-muted)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 8 }}>Signature *</span>
                   <SignaturePad onChange={setSignature} />
                 </div>
 
                 <div className="mt-18">
-                  <span style={{ display: 'block', color: 'var(--portal-text-soft)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 8 }}>Delivery photo (optional, max 2MB)</span>
+                  <span style={{ display: 'block', color: 'var(--p-muted)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 8 }}>Delivery photo (optional, max 2MB)</span>
                   {podPhoto ? (
                     <div style={{ position: 'relative', display: 'inline-block' }}>
                       <img src={podPhoto} alt="Delivery proof" style={{ width: 200, borderRadius: 12 }} data-testid="pod-preview" />

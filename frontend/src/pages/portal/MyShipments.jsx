@@ -26,7 +26,7 @@ export default function MyShipments() {
       <div className="glass">
         <form onSubmit={(e) => { e.preventDefault(); load(q); }} className="row mt-12" style={{ marginBottom: 18 }}>
           <div className="field" style={{ flex: 1 }}>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by AWB, city, country…" data-testid="my-shipments-search" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--portal-border-light)', borderRadius: 12, color: 'white', padding: '12px 14px', minHeight: 48, width: '100%' }} />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by AWB, city, country…" data-testid="my-shipments-search" style={{ background: 'var(--p-surface-soft)', border: '1px solid var(--p-border)', borderRadius: 12, color: 'var(--p-ink)', padding: '12px 14px', minHeight: 48, width: '100%' }} />
           </div>
           <button type="submit" className="btn btn-ghost"><Search size={16} />Search</button>
         </form>

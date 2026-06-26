@@ -102,7 +102,7 @@ export default function NewPickup() {
         </div>
 
         <div className="mt-18">
-          <span style={{ display: 'block', color: 'var(--portal-text-soft)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 10 }}>Service</span>
+          <span style={{ display: 'block', color: 'var(--p-muted)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 10 }}>Service</span>
           <div className="service-pick">
             {SERVICES.map((s) => (
               <label key={s.id} className={service === s.id ? 'is-active' : ''} data-testid={`service-${s.id}`}>

@@ -63,7 +63,7 @@ export default function PortalLayout() {
           ))}
         </nav>
 
-        <Link to="/" className="portal-nav-aux" style={{ marginTop: 'auto', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', color: 'var(--portal-text-soft)', fontSize: 14, fontWeight: 600 }} data-testid="back-to-site">
+        <Link to="/" className="portal-nav-aux" style={{ marginTop: 'auto', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', color: 'var(--p-muted)', fontSize: 14, fontWeight: 600 }} data-testid="back-to-site">
           <ExternalLink size={18} />Marketing site
         </Link>
 

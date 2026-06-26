@@ -55,9 +55,9 @@ export default function AdminShipments() {
       <div className="glass">
         <form onSubmit={(e) => { e.preventDefault(); load(); }} className="row" style={{ gap: 12, marginBottom: 18 }}>
           <div style={{ flex: 1 }}>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search AWB, customer, city, country…" data-testid="admin-search" style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--portal-border-light)', borderRadius: 12, color: 'white', padding: '12px 14px', minHeight: 48 }} />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search AWB, customer, city, country…" data-testid="admin-search" style={{ width: '100%', background: 'var(--p-surface-soft)', border: '1px solid var(--p-border)', borderRadius: 12, color: 'var(--p-ink)', padding: '12px 14px', minHeight: 48 }} />
           </div>
-          <select value={status} onChange={(e) => { setStatus(e.target.value); load(q, e.target.value); }} data-testid="admin-status-filter" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--portal-border-light)', borderRadius: 12, color: 'white', padding: '12px 14px', minHeight: 48 }}>
+          <select value={status} onChange={(e) => { setStatus(e.target.value); load(q, e.target.value); }} data-testid="admin-status-filter" style={{ background: 'var(--p-surface-soft)', border: '1px solid var(--p-border)', borderRadius: 12, color: 'var(--p-ink)', padding: '12px 14px', minHeight: 48 }}>
             <option value="">All statuses</option>
             {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>

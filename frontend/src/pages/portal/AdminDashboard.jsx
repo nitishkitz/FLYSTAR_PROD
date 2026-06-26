@@ -55,10 +55,10 @@ export default function AdminDashboard() {
                     <stop offset="100%" stopColor="#ffb547" stopOpacity={0.65} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                <XAxis dataKey="date" stroke="#9aa9bf" fontSize={11} />
-                <YAxis stroke="#9aa9bf" fontSize={11} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#0a1c3a', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 10, color: 'white' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--p-border)" />
+                <XAxis dataKey="date" stroke="#607087" fontSize={11} />
+                <YAxis stroke="#607087" fontSize={11} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid var(--p-border-strong)', borderRadius: 10, color: 'var(--p-ink)' }} />
                 <Line type="monotone" dataKey="count" stroke="url(#lineRed)" strokeWidth={3} dot={{ r: 4, fill: '#ff4655' }} />
               </LineChart>
             </ResponsiveContainer>
@@ -77,8 +77,8 @@ export default function AdminDashboard() {
                 >
                   {status_distribution.map((d, i) => <Cell key={d.status} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: '#0a1c3a', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 10, color: 'white' }} />
-                <Legend wrapperStyle={{ fontSize: 12, color: '#9aa9bf' }} />
+                <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid var(--p-border-strong)', borderRadius: 10, color: 'var(--p-ink)' }} />
+                <Legend wrapperStyle={{ fontSize: 12, color: "#607087" }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -91,10 +91,10 @@ export default function AdminDashboard() {
           <div style={{ width: '100%', height: 260 }}>
             <ResponsiveContainer>
               <BarChart data={by_country} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                <XAxis type="number" stroke="#9aa9bf" fontSize={11} allowDecimals={false} />
-                <YAxis dataKey="country" type="category" stroke="#9aa9bf" fontSize={11} width={120} />
-                <Tooltip contentStyle={{ background: '#0a1c3a', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 10, color: 'white' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--p-border)" />
+                <XAxis type="number" stroke="#607087" fontSize={11} allowDecimals={false} />
+                <YAxis dataKey="country" type="category" stroke="#607087" fontSize={11} width={120} />
+                <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid var(--p-border-strong)', borderRadius: 10, color: 'var(--p-ink)' }} />
                 <Bar dataKey="count" fill="#5eb1ff" radius={[0, 8, 8, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -107,11 +107,11 @@ export default function AdminDashboard() {
             <div style={{ width: '100%', height: 260 }}>
               <ResponsiveContainer>
                 <BarChart data={by_employee}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="name" stroke="#9aa9bf" fontSize={11} />
-                  <YAxis stroke="#9aa9bf" fontSize={11} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: '#0a1c3a', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 10, color: 'white' }} />
-                  <Legend wrapperStyle={{ fontSize: 12, color: '#9aa9bf' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--p-border)" />
+                  <XAxis dataKey="name" stroke="#607087" fontSize={11} />
+                  <YAxis stroke="#607087" fontSize={11} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid var(--p-border-strong)', borderRadius: 10, color: 'var(--p-ink)' }} />
+                  <Legend wrapperStyle={{ fontSize: 12, color: "#607087" }} />
                   <Bar dataKey="total" name="Total handled" fill="#b18bff" radius={[8, 8, 0, 0]} />
                   <Bar dataKey="delivered" name="Delivered" fill="#2bd897" radius={[8, 8, 0, 0]} />
                 </BarChart>

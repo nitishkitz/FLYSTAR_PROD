@@ -56,7 +56,7 @@ export default function AdminUsers() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} data-testid={`user-row-${u.email}`}>
-                    <td style={{ color: 'white', fontWeight: 650 }}>{u.name}</td>
+                    <td style={{ color: 'var(--p-ink)', fontWeight: 650 }}>{u.name}</td>
                     <td>{u.email}</td>
                     <td>{u.phone}</td>
                     <td><span className="pill tone-blue"><b />{u.role}</span></td>

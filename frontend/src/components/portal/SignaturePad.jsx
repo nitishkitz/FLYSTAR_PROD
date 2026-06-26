@@ -71,7 +71,7 @@ export default function SignaturePad({ onChange, height = 180 }) {
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px dashed rgba(255,255,255,0.18)', background: 'white' }}>
+      <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px dashed rgba(11, 37, 69, 0.18)', background: 'white' }}>
         <canvas
           ref={canvasRef}
           onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end}

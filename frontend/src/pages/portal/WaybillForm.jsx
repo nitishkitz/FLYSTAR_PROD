@@ -141,7 +141,7 @@ export default function WaybillForm() {
         <label className="field mt-12"><span>Notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any handling/customs context" data-testid="wb-notes" /></label>
 
         <div className="mt-18">
-          <span style={{ display: 'block', color: 'var(--portal-text-soft)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 10 }}>Proof photo (optional, max 2MB)</span>
+          <span style={{ display: 'block', color: 'var(--p-muted)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 650, marginBottom: 10 }}>Proof photo (optional, max 2MB)</span>
           {proof ? (
             <div style={{ position: 'relative' }}>
               <img src={proof} alt="Proof" style={{ width: 220, borderRadius: 12 }} data-testid="proof-preview" />
