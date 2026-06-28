@@ -176,6 +176,11 @@ class TestShipments:
             "piece_count": 2, "declared_value_inr": 5000,
             "packaging": "box", "contains_restricted": False,
         }
+        # Transition assigned -> en_route_to_pickup -> checked_in
+        requests.post(f"{API}/shipments/{created_shipment['id']}/status",
+                      headers=_hdr(emp_tok), json={"status": "en_route_to_pickup", "location": "Hyderabad"}, timeout=15)
+        requests.post(f"{API}/shipments/{created_shipment['id']}/status",
+                      headers=_hdr(emp_tok), json={"status": "checked_in", "location": "Hyderabad"}, timeout=15)
         r = requests.post(f"{API}/shipments/{created_shipment['id']}/waybill",
                           headers=_hdr(emp_tok), json=payload, timeout=20)
         assert r.status_code == 200, r.text
@@ -184,9 +189,57 @@ class TestShipments:
         assert d["actual_weight_kg"] == 4.1
         assert d["piece_count"] == 2
 
+    def test_cannot_mark_picked_up_without_final_pickup_form(self, tokens):
+        cust_tok, _ = tokens["customer"]
+        emp_tok, _ = tokens["employee"]
+        admin_tok = tokens["admin"]
+        payload = {
+            "pickup": {"name": "No Form Sender", "phone": "+911", "line1": "A",
+                        "city": "Hyderabad", "country": "India"},
+            "delivery": {"name": "No Form Receiver", "phone": "+9712", "line1": "B",
+                          "city": "Dubai", "country": "UAE"},
+            "shipment_type": "parcel",
+            "service": "priority",
+            "approx_weight_kg": 1.2,
+            "contents": "TEST final pickup form lock",
+        }
+        r = requests.post(f"{API}/shipments", headers=_hdr(cust_tok), json=payload, timeout=20)
+        assert r.status_code == 200, r.text
+        sid = r.json()["id"]
+        assert requests.post(f"{API}/shipments/{sid}/accept", headers=_hdr(emp_tok), timeout=15).status_code == 200
+        assert requests.post(f"{API}/shipments/{sid}/status",
+                             headers=_hdr(emp_tok),
+                             json={"status": "en_route_to_pickup", "location": "Hyderabad"},
+                             timeout=15).status_code == 200
+        assert requests.post(f"{API}/shipments/{sid}/status",
+                             headers=_hdr(emp_tok),
+                             json={"status": "checked_in", "location": "Hyderabad"},
+                             timeout=15).status_code == 200
+
+        direct_pickup = requests.post(f"{API}/shipments/{sid}/status",
+                                      headers=_hdr(emp_tok),
+                                      json={"status": "picked_up", "location": "Hyderabad"},
+                                      timeout=15)
+        assert direct_pickup.status_code == 400
+        assert "final pickup form" in direct_pickup.text.lower()
+
+        admin_patch = requests.patch(f"{API}/shipments/{sid}",
+                                     headers=_hdr(admin_tok),
+                                     json={"status": "picked_up"},
+                                     timeout=15)
+        assert admin_patch.status_code == 400
+        assert "final pickup form" in admin_patch.text.lower()
+
+        admin_skip = requests.patch(f"{API}/shipments/{sid}",
+                                    headers=_hdr(admin_tok),
+                                    json={"status": "at_hub"},
+                                    timeout=15)
+        assert admin_skip.status_code == 400
+        assert "final pickup form" in admin_skip.text.lower()
+
     def test_employee_updates_status(self, tokens, created_shipment):
         emp_tok, _ = tokens["employee"]
-        for st in ["dispatched", "in_transit", "out_for_delivery", "delivered"]:
+        for st in ["at_hub", "packed", "dispatched", "in_transit", "customs", "out_for_delivery", "delivered"]:
             r = requests.post(f"{API}/shipments/{created_shipment['id']}/status",
                               headers=_hdr(emp_tok),
                               json={"status": st, "note": f"now {st}", "location": "Hub"},
@@ -364,6 +417,8 @@ def pod_shipment(tokens):
         "actual_weight_kg": 2.0, "length_cm": 20, "width_cm": 15, "height_cm": 10,
         "piece_count": 1, "declared_value_inr": 1000, "packaging": "box",
     }
+    requests.post(f"{API}/shipments/{sid}/status", headers=_hdr(emp_tok), json={"status": "en_route_to_pickup", "location": "Hyderabad"}, timeout=15)
+    requests.post(f"{API}/shipments/{sid}/status", headers=_hdr(emp_tok), json={"status": "checked_in", "location": "Hyderabad"}, timeout=15)
     requests.post(f"{API}/shipments/{sid}/waybill", headers=_hdr(emp_tok), json=wb, timeout=15)
     return sid
 
@@ -374,6 +429,10 @@ class TestPOD:
 
     def test_delivered_with_pod_persists(self, tokens, pod_shipment):
         emp_tok, _ = tokens["employee"]
+        for st in ["at_hub", "packed", "dispatched", "in_transit", "customs", "out_for_delivery"]:
+            requests.post(f"{API}/shipments/{pod_shipment}/status",
+                          headers=_hdr(emp_tok), json={"status": st, "location": "Dubai Marina", "note": "transit"},
+                          timeout=15)
         body = {
             "status": "delivered",
             "note": "Handed to receiver",
@@ -487,11 +546,13 @@ class TestEmailNonBlocking:
             "actual_weight_kg": 1.0, "length_cm": 10, "width_cm": 10, "height_cm": 10,
             "piece_count": 1, "declared_value_inr": 500, "packaging": "box",
         }
+        requests.post(f"{API}/shipments/{sid}/status", headers=_hdr(emp_tok), json={"status": "en_route_to_pickup", "location": "Hyderabad"}, timeout=15)
+        requests.post(f"{API}/shipments/{sid}/status", headers=_hdr(emp_tok), json={"status": "checked_in", "location": "Hyderabad"}, timeout=15)
         requests.post(f"{API}/shipments/{sid}/waybill", headers=_hdr(emp_tok), json=wb, timeout=15)
         # Time the status update
         t0 = time.time()
         r = requests.post(f"{API}/shipments/{sid}/status", headers=_hdr(emp_tok),
-                          json={"status": "in_transit", "note": "TEST", "location": "Hub"}, timeout=15)
+                          json={"status": "at_hub", "note": "TEST", "location": "Hub"}, timeout=15)
         elapsed = time.time() - t0
         assert r.status_code == 200, r.text
         # Email is fire-and-forget — endpoint shouldn't be slow regardless of Resend result.

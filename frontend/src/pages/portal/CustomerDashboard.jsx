@@ -16,7 +16,7 @@ export default function CustomerDashboard() {
 
   const counts = (shipments || []).reduce((acc, s) => {
     if (s.status === 'delivered') acc.delivered += 1;
-    else if (['requested', 'assigned', 'en_route_to_pickup'].includes(s.status)) acc.pending += 1;
+    else if (['requested', 'assigned', 'en_route_to_pickup', 'checked_in'].includes(s.status)) acc.pending += 1;
     else acc.transit += 1;
     return acc;
   }, { pending: 0, transit: 0, delivered: 0 });

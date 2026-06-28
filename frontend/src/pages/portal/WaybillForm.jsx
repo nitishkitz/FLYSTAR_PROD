@@ -77,6 +77,25 @@ export default function WaybillForm() {
 
   if (!s) return <p className="muted">Loading…</p>;
 
+  if (s.status !== 'checked_in') {
+    return (
+      <div data-testid="waybill-checkin-required">
+        <div className="portal-topbar" style={{ marginTop: -16 }}>
+          <div>
+            <h1>Customer check-in required</h1>
+            <p>Check in at the customer location before filling the final pickup form.</p>
+          </div>
+          <Link to={`/portal/shipment/${id}`} className="btn btn-ghost"><ArrowLeft size={16} />Back to shipment</Link>
+        </div>
+        <div className="empty-card">
+          <h3>Not ready for final pickup form</h3>
+          <p>Open the shipment and tap “Check in at customer” after reaching the pickup address.</p>
+          <Link to={`/portal/shipment/${id}`} className="btn btn-primary">Open shipment</Link>
+        </div>
+      </div>
+    );
+  }
+
   const Block = ({ title, value, setter, prefix }) => (
     <>
       <h4 className="subsection-title">{title}</h4>

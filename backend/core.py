@@ -16,7 +16,7 @@ db = mongo_client[os.environ["DB_NAME"]]
 
 
 def now_utc() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def hash_pw(pw: str) -> str:

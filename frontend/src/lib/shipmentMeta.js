@@ -2,6 +2,7 @@ export const STATUS_META = {
   requested: { label: "Requested", tone: "amber" },
   assigned: { label: "Assigned", tone: "amber" },
   en_route_to_pickup: { label: "En route to pickup", tone: "amber" },
+  checked_in: { label: "Checked in at customer", tone: "amber" },
   picked_up: { label: "Picked up", tone: "blue" },
   at_hub: { label: "At hub", tone: "blue" },
   packed: { label: "Packed", tone: "blue" },
@@ -16,7 +17,7 @@ export const STATUS_META = {
 };
 
 export const STATUS_ORDER = [
-  "requested", "assigned", "en_route_to_pickup", "picked_up", "at_hub",
+  "requested", "assigned", "en_route_to_pickup", "checked_in", "picked_up", "at_hub",
   "packed", "dispatched", "in_transit", "customs", "out_for_delivery",
   "delivered",
 ];

@@ -25,13 +25,15 @@ export default function Invoice() {
   const lineWeight = s.actual_weight_kg || s.approx_weight_kg;
   const paid = s.payment_status === 'paid';
   const canPay = !paid && (user?.role === 'customer' || user?.role === 'admin');
+  const subtotal = s.price_inr || 0;
+  const total = subtotal;
 
   return (
     <div data-testid="invoice-page">
       <div className="portal-topbar" style={{ marginTop: -16 }}>
         <div>
           <h1>Invoice</h1>
-          <p>Placeholder invoice for shipment {s.awb}.</p>
+          <p>Commercial shipment invoice for {s.awb}.</p>
         </div>
         <div className="portal-topbar-actions">
           <Link to={`/portal/shipment/${id}`} className="btn btn-ghost"><ArrowLeft size={16} />Back</Link>
@@ -42,80 +44,122 @@ export default function Invoice() {
 
       {error && <p className="auth-error">{error}</p>}
 
-      <div className="invoice-paper" data-testid="invoice-paper" style={{ position: 'relative' }}>
-        {paid && (
-          <div data-testid="paid-stamp" style={{
-            position: 'absolute', top: 130, right: 56,
-            transform: 'rotate(-12deg)', padding: '10px 22px',
-            border: '3px solid #10b981', color: '#10b981',
-            fontFamily: "'Outfit Variable', sans-serif", fontWeight: 800, fontSize: 28,
-            letterSpacing: '0.18em', borderRadius: 8, opacity: 0.85,
-          }}>PAID</div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="invoice-paper" data-testid="invoice-paper">
+        {paid && <div className="invoice-paid-stamp" data-testid="paid-stamp">PAID</div>}
+
+        <header className="invoice-head">
           <div>
-            <img src="/Assets/flystar-wordmark.png" alt="Flystar" style={{ height: 60 }} />
-            <p style={{ margin: '12px 0 0', color: '#607087', fontSize: 13 }}>
-              #19-10-24/P, Opp: Passport Office,<br />AIR Bypass Road, Tirupati.<br />
+            <img src="/Assets/flystar-wordmark.png" alt="Flystar" />
+            <p>
+              #19-10-24/P, Opp: Passport Office, AIR Bypass Road, Tirupati<br />
               flystarintl1@gmail.com · +91 8125477584
             </p>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <h2>INVOICE</h2>
-            <p style={{ margin: '4px 0', fontFamily: 'ui-monospace, monospace', color: '#12263e' }}>{s.invoice_number}</p>
-            <p style={{ margin: 0, color: '#607087', fontSize: 13 }}>Issue date: {fmtDate(s.created_at)}</p>
-            <p style={{ margin: '4px 0 0', color: '#607087', fontSize: 13 }}>AWB: <b style={{ color: '#12263e', fontFamily: 'ui-monospace, monospace' }}>{s.awb}</b></p>
-          </div>
-        </div>
 
-        <div className="invoice-grid">
+          <div className="invoice-title-block">
+            <span>Tax invoice</span>
+            <h2>INVOICE</h2>
+            <b>{s.invoice_number}</b>
+          </div>
+        </header>
+
+        <section className="invoice-status-line">
           <div>
-            <small style={{ color: '#607087', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bill to</small>
-            <p style={{ margin: '6px 0 0', fontWeight: 700 }}>{s.customer_name}</p>
-            <p style={{ margin: '4px 0', color: '#607087', fontSize: 14 }}>{s.customer_email}</p>
-            <p style={{ margin: 0, color: '#607087', fontSize: 14 }}>{s.customer_phone}</p>
+            <span>AWB</span>
+            <strong>{s.awb}</strong>
           </div>
           <div>
-            <small style={{ color: '#607087', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ship to</small>
-            <p style={{ margin: '6px 0 0', fontWeight: 700 }}>{s.delivery?.name}</p>
-            <p style={{ margin: '4px 0', color: '#607087', fontSize: 14 }}>{s.delivery?.line1}, {s.delivery?.city}</p>
-            <p style={{ margin: 0, color: '#607087', fontSize: 14 }}>{s.delivery?.state}, {s.delivery?.country} {s.delivery?.postal_code}</p>
+            <span>Issued</span>
+            <strong>{fmtDate(s.created_at)}</strong>
           </div>
-        </div>
+          <div>
+            <span>Payment</span>
+            <strong className={paid ? 'is-paid' : 'is-due'}>{paid ? 'Paid' : 'Due'}</strong>
+          </div>
+          <div>
+            <span>Total</span>
+            <strong>{fmtINR(total)}</strong>
+          </div>
+        </section>
+
+        <section className="invoice-address-grid">
+          <article>
+            <span>Bill to</span>
+            <strong>{s.customer_name}</strong>
+            <p>{s.customer_email}</p>
+            <p>{s.customer_phone}</p>
+          </article>
+          <article>
+            <span>Pickup from</span>
+            <strong>{s.pickup?.name || s.customer_name}</strong>
+            <p>{s.pickup?.line1}, {s.pickup?.city}</p>
+            <p>{s.pickup?.state}, {s.pickup?.country} {s.pickup?.postal_code}</p>
+          </article>
+          <article>
+            <span>Deliver to</span>
+            <strong>{s.delivery?.name}</strong>
+            <p>{s.delivery?.line1}, {s.delivery?.city}</p>
+            <p>{s.delivery?.state}, {s.delivery?.country} {s.delivery?.postal_code}</p>
+          </article>
+        </section>
+
+        <section className="invoice-route-row">
+          <div>
+            <span>Route</span>
+            <strong>{s.pickup?.city || 'Origin'} → {s.delivery?.city || s.delivery?.country}</strong>
+          </div>
+          <div>
+            <span>Service</span>
+            <strong className="capitalize">{s.service}</strong>
+          </div>
+          <div>
+            <span>Weight</span>
+            <strong>{lineWeight} kg</strong>
+          </div>
+        </section>
 
         <table className="invoice-items">
           <thead>
-            <tr><th>Description</th><th>Service</th><th>Weight</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
+            <tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
           </thead>
           <tbody>
             <tr>
               <td>
-                <strong style={{ textTransform: 'capitalize' }}>{s.shipment_type}</strong> · {s.pickup?.city} → {s.delivery?.country}
-                {s.contents && <div style={{ color: '#607087', fontSize: 13, marginTop: 4 }}>{s.contents}</div>}
+                <strong>{s.shipment_type}</strong>
+                <span>{s.contents || 'International courier shipment'}</span>
               </td>
-              <td style={{ textTransform: 'capitalize' }}>{s.service}</td>
-              <td>{lineWeight} kg</td>
-              <td style={{ textAlign: 'right' }}>{fmtINR(s.price_inr)}</td>
+              <td>1</td>
+              <td>{fmtINR(subtotal)}</td>
+              <td>{fmtINR(subtotal)}</td>
             </tr>
           </tbody>
         </table>
 
-        <div className="invoice-total">
-          <small style={{ color: '#607087', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total payable</small><br />
-          <span style={{ color: paid ? '#10b981' : '#d91a2a' }}>{fmtINR(s.price_inr)}</span>
-          {paid && (
-            <div style={{ marginTop: 8, fontSize: 14, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', fontFamily: 'Inter, sans-serif' }}>
-              <CheckCircle2 size={16} />Paid via {s.payment_method || 'card'} · Receipt {s.payment_receipt}
-              {s.paid_at && <span style={{ color: '#607087', fontWeight: 500 }}>· {fmtDate(s.paid_at)}</span>}
-            </div>
-          )}
-        </div>
+        <section className="invoice-bottom">
+          <div className="invoice-notes">
+            <span>Notes</span>
+            <p>
+              Rates exclude duties, taxes, insurance, restricted-item handling, and remote-area
+              surcharges where applicable. This invoice was generated from the Flystar Operations Portal.
+            </p>
+            {paid && (
+              <div className="invoice-paid-note">
+                <CheckCircle2 size={16} />
+                <span>Paid via {s.payment_method || 'card'} · Receipt {s.payment_receipt}</span>
+                {s.paid_at && <small>{fmtDate(s.paid_at)}</small>}
+              </div>
+            )}
+          </div>
 
-        <p style={{ marginTop: 32, fontSize: 12, color: '#607087', lineHeight: 1.6 }}>
-          This is a placeholder invoice generated by the Flystar Operations Portal.
-          Rates are indicative and exclude duties, taxes, insurance, restricted-item handling and remote-area surcharges where applicable.
-          Settlement instructions and GST details will be added in the formal invoice.
-        </p>
+          <div className="invoice-total-card">
+            <div><span>Subtotal</span><strong>{fmtINR(subtotal)}</strong></div>
+            <div><span>Adjustments</span><strong>{fmtINR(0)}</strong></div>
+            <div className="is-total">
+              <span>Total payable</span>
+              <strong className={paid ? 'is-paid' : ''}>{fmtINR(total)}</strong>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

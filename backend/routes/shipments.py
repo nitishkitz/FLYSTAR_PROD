@@ -7,10 +7,11 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core import (
-    db, doc_to_public, get_token_user, require_roles, now_utc, estimate_price,
+    db, doc_to_public, get_token_user, require_roles, now_utc, estimate_price, hash_pw,
 )
 from schemas import (
-    PickupRequestIn, StatusUpdateIn, WaybillFillIn, ShipmentUpdateIn, PayInvoiceIn,
+    PickupRequestIn, PublicPickupRequestIn, StatusUpdateIn, WaybillFillIn, ShipmentUpdateIn, PayInvoiceIn,
+    AssignShipmentIn,
 )
 from email_service import send_status_email
 
@@ -18,9 +19,19 @@ router = APIRouter()
 
 # Statuses that trigger an email
 EMAIL_STATUSES = {
-    "requested", "assigned", "picked_up", "dispatched",
+    "requested", "assigned", "checked_in", "picked_up", "dispatched",
     "in_transit", "out_for_delivery", "delivered", "exception", "cancelled",
 }
+
+STATUS_ORDER = [
+    "requested", "assigned", "en_route_to_pickup", "checked_in", "picked_up", "at_hub",
+    "packed", "dispatched", "in_transit", "customs", "out_for_delivery", "delivered"
+]
+POST_PICKUP_STATUSES = set(STATUS_ORDER[STATUS_ORDER.index("picked_up"):])
+
+
+def _has_final_pickup_form(s: dict) -> bool:
+    return bool(s.get("actual_weight_kg") and s.get("piece_count") and s.get("sender") and s.get("receiver"))
 
 
 def gen_awb() -> str:
@@ -108,6 +119,71 @@ async def create_pickup_request(payload: PickupRequestIn,
     res = await db.shipments.insert_one(doc)
     doc["_id"] = res.inserted_id
     _fire_email(doc, "requested", payload.pickup.city, "Pickup request created")
+    return shipment_to_dict(doc)
+
+
+@router.post("/public/pickups")
+async def create_public_pickup_request(payload: PublicPickupRequestIn):
+    email = payload.customer_email.lower()
+    user = await db.users.find_one({"email": email})
+    if not user:
+        user = {
+            "email": email,
+            "password_hash": hash_pw(secrets.token_urlsafe(18)),
+            "name": payload.pickup.name.strip(),
+            "phone": payload.pickup.phone.strip(),
+            "role": "customer",
+            "active": True,
+            "created_at": now_utc(),
+        }
+        res = await db.users.insert_one(user)
+        user["_id"] = res.inserted_id
+
+    price = estimate_price(payload.delivery.country, payload.shipment_type, payload.service, payload.approx_weight_kg)
+    now = now_utc()
+    awb = gen_awb()
+    doc = {
+        "awb": awb,
+        "customer_id": user["_id"],
+        "customer_name": payload.pickup.name.strip(),
+        "customer_email": email,
+        "customer_phone": payload.pickup.phone.strip(),
+        "assigned_employee_id": None,
+        "status": "requested",
+        "pickup": payload.pickup.model_dump(),
+        "delivery": payload.delivery.model_dump(),
+        "shipment_type": payload.shipment_type,
+        "service": payload.service,
+        "approx_weight_kg": payload.approx_weight_kg,
+        "approx_length_cm": payload.approx_length_cm,
+        "approx_width_cm": payload.approx_width_cm,
+        "approx_height_cm": payload.approx_height_cm,
+        "actual_weight_kg": None,
+        "length_cm": None, "width_cm": None, "height_cm": None,
+        "piece_count": None,
+        "declared_value_inr": None,
+        "packaging": None,
+        "contains_restricted": False,
+        "proof_photo_base64": None,
+        "contents": payload.contents,
+        "notes": payload.notes or "Raised from marketing site",
+        "preferred_pickup_at": payload.preferred_pickup_at,
+        "price_inr": price,
+        "invoice_number": f"INV-{awb[-6:]}",
+        "payment_status": "unpaid",
+        "events": [{
+            "status": "requested",
+            "at": now,
+            "by": {"id": str(user["_id"]), "email": email, "name": payload.pickup.name.strip(), "role": "customer"},
+            "note": "Pickup request created from marketing site",
+            "location": payload.pickup.city,
+        }],
+        "created_at": now,
+        "updated_at": now,
+    }
+    res = await db.shipments.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    _fire_email(doc, "requested", payload.pickup.city, "Pickup request created from marketing site")
     return shipment_to_dict(doc)
 
 
@@ -203,6 +279,40 @@ async def accept_shipment(shipment_id: str, user=Depends(require_roles("employee
     return shipment_to_dict(s)
 
 
+@router.post("/shipments/{shipment_id}/assign")
+async def assign_shipment(shipment_id: str, payload: AssignShipmentIn,
+                          user=Depends(require_roles("admin"))):
+    s = await db.shipments.find_one({"_id": ObjectId(shipment_id)})
+    if not s:
+        raise HTTPException(404, "Not found")
+    employee = await db.users.find_one({
+        "_id": ObjectId(payload.employee_id),
+        "role": "employee",
+        "active": True,
+    })
+    if not employee:
+        raise HTTPException(400, "Select an active employee")
+    event = {
+        "status": "assigned",
+        "at": now_utc(),
+        "by": doc_to_public(user),
+        "note": f"Assigned to {employee.get('name')}",
+        "location": s.get("pickup", {}).get("city", ""),
+    }
+    await db.shipments.update_one(
+        {"_id": ObjectId(shipment_id)},
+        {"$set": {
+            "assigned_employee_id": employee["_id"],
+            "assigned_employee_name": employee.get("name"),
+            "status": "assigned" if s.get("status") == "requested" else s.get("status"),
+            "updated_at": now_utc(),
+        }, "$push": {"events": event}},
+    )
+    s = await db.shipments.find_one({"_id": ObjectId(shipment_id)})
+    _fire_email(s, "assigned", s.get("pickup", {}).get("city", ""), event["note"])
+    return shipment_to_dict(s)
+
+
 @router.post("/shipments/{shipment_id}/waybill")
 async def fill_waybill(shipment_id: str, payload: WaybillFillIn,
                        user=Depends(require_roles("employee", "admin"))):
@@ -211,6 +321,8 @@ async def fill_waybill(shipment_id: str, payload: WaybillFillIn,
         raise HTTPException(404, "Not found")
     if user["role"] == "employee" and s.get("assigned_employee_id") != user["_id"]:
         raise HTTPException(403, "Not your shipment")
+    if s.get("status") != "checked_in":
+        raise HTTPException(400, "Check in at the customer location before filling the waybill")
     price = estimate_price(payload.receiver.country, s.get("shipment_type", "parcel"),
                            s.get("service", "priority"), payload.actual_weight_kg)
     event = {"status": "picked_up", "at": now_utc(), "by": doc_to_public(user),
@@ -249,6 +361,21 @@ async def update_status(shipment_id: str, payload: StatusUpdateIn,
     if user["role"] == "employee" and s.get("assigned_employee_id") != user["_id"]:
         raise HTTPException(403, "Not your shipment")
 
+    # Strict next-status validation
+    current_status = s.get("status")
+    if current_status not in STATUS_ORDER:
+        raise HTTPException(400, f"Current status '{current_status}' is not in the standard route sequence")
+    
+    current_idx = STATUS_ORDER.index(current_status)
+    if current_idx == len(STATUS_ORDER) - 1:
+        raise HTTPException(400, "Shipment is already delivered")
+        
+    expected_next = STATUS_ORDER[current_idx + 1]
+    if payload.status != expected_next:
+        raise HTTPException(400, f"Cannot update status from '{current_status}' to '{payload.status}'. The next expected status is '{expected_next}'.")
+    if current_status == "checked_in" and payload.status == "picked_up" and not _has_final_pickup_form(s):
+        raise HTTPException(400, "Fill the final pickup form before marking the shipment as picked up")
+
     event = {"status": payload.status, "at": now_utc(), "by": doc_to_public(user),
              "note": payload.note or "", "location": payload.location or ""}
 
@@ -281,6 +408,9 @@ async def update_status(shipment_id: str, payload: StatusUpdateIn,
 @router.patch("/shipments/{shipment_id}")
 async def admin_edit(shipment_id: str, payload: ShipmentUpdateIn,
                      user=Depends(require_roles("admin"))):
+    s = await db.shipments.find_one({"_id": ObjectId(shipment_id)})
+    if not s:
+        raise HTTPException(404, "Not found")
     update = {}
     for k, v in payload.model_dump().items():
         if v is None:
@@ -296,6 +426,8 @@ async def admin_edit(shipment_id: str, payload: ShipmentUpdateIn,
             update[k] = v
     if not update:
         raise HTTPException(400, "Nothing to update")
+    if update.get("status") in POST_PICKUP_STATUSES and not _has_final_pickup_form(s):
+        raise HTTPException(400, "Fill the final pickup form before marking the shipment as picked up")
     update["updated_at"] = now_utc()
     event = {"status": update.get("status", "edited"), "at": now_utc(),
              "by": doc_to_public(user), "note": "Admin edit", "location": "Admin Panel"}

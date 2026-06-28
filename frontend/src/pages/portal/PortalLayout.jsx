@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard, PackagePlus, Package, Truck, Inbox, Users,
-  BarChart3, LogOut, Menu, X, ExternalLink,
+  BarChart3, LogOut, Menu, X, ExternalLink, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
 
@@ -18,8 +18,9 @@ const NAV = {
   ],
   admin: [
     { to: '/portal/admin', label: 'Overview', icon: BarChart3, end: true },
+    { to: '/portal/admin/queue', label: 'Pickup queue', icon: Inbox },
     { to: '/portal/admin/shipments', label: 'All shipments', icon: Truck },
-    { to: '/portal/admin/users', label: 'Users & staff', icon: Users },
+    { to: '/portal/admin/users', label: 'Staff & customers', icon: Users },
   ],
 };
 
@@ -27,6 +28,12 @@ const TITLE = {
   admin: 'Admin Command',
   employee: 'Field Ops',
   customer: 'Customer Portal',
+};
+
+const ROLE_COPY = {
+  admin: 'Control tower',
+  employee: 'Pickup desk',
+  customer: 'Shipping desk',
 };
 
 export default function PortalLayout() {
@@ -42,14 +49,21 @@ export default function PortalLayout() {
     <div className={`portal-shell ${open ? 'is-mobile-open' : ''}`} data-testid="portal-shell">
       <aside className="portal-sidebar" data-testid="portal-sidebar">
         <Link to="/" className="portal-brand">
-          <img src="/Assets/flystar-wordmark.png" alt="Flystar" />
-          <div>
+          <span className="portal-brand-mark">
+            <img src="/Assets/flystar-wordmark.png" alt="Flystar" />
+          </span>
+          <div className="portal-brand-copy">
             <small>Flystar</small>
             <strong>{TITLE[user.role]}</strong>
           </div>
         </Link>
 
-        <div className="portal-section-label">Navigation</div>
+        <div className="portal-role-panel">
+          <span><Sparkles size={13} />{ROLE_COPY[user.role]}</span>
+          <strong>{user.role}</strong>
+        </div>
+
+        <div className="portal-section-label">Workspace</div>
         <nav className="portal-nav">
           {items.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -58,25 +72,30 @@ export default function PortalLayout() {
               onClick={() => setOpen(false)}
               className={({ isActive }) => (isActive ? 'is-active' : '')}
             >
-              <Icon aria-hidden />{label}
+              <span className="portal-nav-icon"><Icon aria-hidden /></span>
+              <span>{label}</span>
             </NavLink>
           ))}
         </nav>
 
-        <Link to="/" className="portal-nav-aux" style={{ marginTop: 'auto', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', color: 'var(--p-muted)', fontSize: 14, fontWeight: 600 }} data-testid="back-to-site">
-          <ExternalLink size={18} />Marketing site
-        </Link>
+        <div className="portal-sidebar-footer">
+          <Link to="/" className="portal-nav-aux" data-testid="back-to-site">
+            <span className="portal-nav-icon"><ExternalLink size={18} /></span>
+            <span>Marketing site</span>
+          </Link>
 
-        <div className="portal-user-card">
-          <div className="portal-avatar">{initial}</div>
-          <div>
-            <strong>{user.name || user.email}</strong>
-            <small>{user.role}</small>
+          <div className="portal-user-card">
+            <div className="portal-avatar">{initial}</div>
+            <div>
+              <strong>{user.name || user.email}</strong>
+              <small>{user.email}</small>
+            </div>
           </div>
+
+          <button className="portal-logout" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} data-testid="logout-btn">
+            <LogOut size={14} />Sign out
+          </button>
         </div>
-        <button className="portal-logout" onClick={async () => { await logout(); navigate('/login', { replace: true }); }} data-testid="logout-btn">
-          <LogOut size={14} />Sign out
-        </button>
       </aside>
 
       <main className="portal-main">

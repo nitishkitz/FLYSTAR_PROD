@@ -17,6 +17,7 @@ const EmployeeDashboard = lazy(() => import('./pages/portal/EmployeeDashboard'))
 const EmployeeQueue = lazy(() => import('./pages/portal/EmployeeQueue'));
 const WaybillForm = lazy(() => import('./pages/portal/WaybillForm'));
 const AdminDashboard = lazy(() => import('./pages/portal/AdminDashboard'));
+const AdminQueue = lazy(() => import('./pages/portal/AdminQueue'));
 const AdminShipments = lazy(() => import('./pages/portal/AdminShipments'));
 const AdminUsers = lazy(() => import('./pages/portal/AdminUsers'));
 const Invoice = lazy(() => import('./pages/portal/Invoice'));
@@ -68,6 +69,7 @@ export default function App() {
               <Route path="/portal/employee/shipment/:id/waybill" element={<Protected roles={['employee', 'admin']}><WaybillForm /></Protected>} />
               {/* Admin */}
               <Route path="/portal/admin" element={<Protected roles={['admin']}><AdminDashboard /></Protected>} />
+              <Route path="/portal/admin/queue" element={<Protected roles={['admin']}><AdminQueue /></Protected>} />
               <Route path="/portal/admin/shipments" element={<Protected roles={['admin']}><AdminShipments /></Protected>} />
               <Route path="/portal/admin/users" element={<Protected roles={['admin']}><AdminUsers /></Protected>} />
               {/* Shared */}

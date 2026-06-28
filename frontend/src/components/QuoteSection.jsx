@@ -6,11 +6,11 @@ export default function QuoteSection() {
     <section id="quote" className="section section-ink scroll-mt-20">
       <div className="container quote-layout">
         <div className="quote-intro">
-          <p className="eyebrow eyebrow-on-dark"><span>Quote</span>Plan the shipment</p>
-          <h2>Tell us what needs to move.</h2>
+          <p className="eyebrow eyebrow-on-dark"><span>Pickup</span>Raise a shipment</p>
+          <h2>Book a Flystar pickup from the site.</h2>
           <p>
-            Share the destination and shipment type. The Flystar team will confirm the available
-            service, packing requirements, and final rate.
+            Share sender, receiver, and shipment details. The request goes directly into the
+            employee pickup queue for assignment.
           </p>
           <ul className="quote-promises">
             <li><Clock3 aria-hidden="true" /><span><strong>Fast response</strong>Direct follow-up from the Tirupati team.</span></li>

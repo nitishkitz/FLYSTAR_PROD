@@ -55,9 +55,13 @@ class PickupRequestIn(BaseModel):
     preferred_pickup_at: Optional[datetime] = None
 
 
+class PublicPickupRequestIn(PickupRequestIn):
+    customer_email: EmailStr
+
+
 class StatusUpdateIn(BaseModel):
     status: Literal[
-        "requested", "assigned", "en_route_to_pickup", "picked_up", "at_hub",
+        "requested", "assigned", "en_route_to_pickup", "checked_in", "picked_up", "at_hub",
         "packed", "dispatched", "in_transit", "customs", "out_for_delivery",
         "delivered", "exception", "cancelled"
     ]
@@ -95,6 +99,10 @@ class ShipmentUpdateIn(BaseModel):
     declared_value_inr: Optional[float] = None
     price_inr: Optional[float] = None
     notes: Optional[str] = None
+
+
+class AssignShipmentIn(BaseModel):
+    employee_id: str
 
 
 class QuoteIn(BaseModel):

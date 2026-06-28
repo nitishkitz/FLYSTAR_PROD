@@ -14,9 +14,9 @@ export default function Login() {
 
   const fillDemo = (role) => {
     const map = {
-      admin: { email: 'admin@flystar.in', password: 'Admin@123' },
-      employee: { email: 'employee@flystar.in', password: 'Employee@123' },
-      customer: { email: 'customer@flystar.in', password: 'Customer@123' },
+      admin: { email: 'admin@flystarcourier.com', password: 'Admin123!' },
+      employee: { email: 'employee@flystarcourier.com', password: 'Employee123!' },
+      customer: { email: 'customer@flystarcourier.com', password: 'Customer123!' },
     };
     setEmail(map[role].email);
     setPassword(map[role].password);

@@ -14,7 +14,7 @@ async def overview(user=Depends(require_roles("admin"))):
     total = await db.shipments.count_documents({})
     delivered = await db.shipments.count_documents({"status": "delivered"})
     in_transit = await db.shipments.count_documents({"status": {"$in": ["in_transit", "dispatched", "customs", "out_for_delivery"]}})
-    pending_pickup = await db.shipments.count_documents({"status": {"$in": ["requested", "assigned", "en_route_to_pickup"]}})
+    pending_pickup = await db.shipments.count_documents({"status": {"$in": ["requested", "assigned", "en_route_to_pickup", "checked_in"]}})
     exceptions = await db.shipments.count_documents({"status": "exception"})
     revenue_agg = await db.shipments.aggregate([
         {"$match": {"status": "delivered"}},
