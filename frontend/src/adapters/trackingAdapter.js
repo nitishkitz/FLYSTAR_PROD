@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { trackingEvents } from '../data/siteContent';
-
-const BASE = import.meta.env.REACT_APP_BACKEND_URL || '';
+import { BACKEND_BASE } from '../lib/backendBase';
 
 const STATUS_LABELS = {
   requested: 'Pickup requested',
@@ -31,7 +30,7 @@ function fmt(iso) {
 export async function lookupTracking(trackingId) {
   const id = trackingId.trim().toUpperCase();
   try {
-    const { data } = await axios.get(`${BASE}/api/shipments/track/${encodeURIComponent(id)}`);
+    const { data } = await axios.get(`${BACKEND_BASE}/api/shipments/track/${encodeURIComponent(id)}`);
     return {
       trackingId: data.awb,
       status: STATUS_LABELS[data.status] || data.status,

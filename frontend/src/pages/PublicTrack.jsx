@@ -4,8 +4,7 @@ import { ArrowLeft, Package, Plane, MapPin, Search, CheckCircle2 } from 'lucide-
 import axios from 'axios';
 import { STATUS_META, STATUS_ORDER, fmtDate } from '../lib/shipmentMeta';
 import StatusPill from '../components/portal/StatusPill';
-
-const BASE = import.meta.env.REACT_APP_BACKEND_URL || '';
+import { BACKEND_BASE } from '../lib/backendBase';
 
 export default function PublicTrack() {
   const { awb: awbParam } = useParams();
@@ -19,7 +18,7 @@ export default function PublicTrack() {
     if (!id) return;
     setBusy(true); setError(''); setData(null);
     try {
-      const { data } = await axios.get(`${BASE}/api/shipments/track/${id.trim().toUpperCase()}`);
+      const { data } = await axios.get(`${BACKEND_BASE}/api/shipments/track/${id.trim().toUpperCase()}`);
       setData(data);
     } catch (e) {
       setError(e?.response?.data?.detail === 'Shipment not found' ? 'Could not find that AWB. Please check and try again.' : (e?.response?.data?.detail || 'Could not find that AWB. Please check and try again.'));
