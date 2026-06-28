@@ -11,8 +11,25 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 JWT_ALG = "HS256"
 
-mongo_client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-db = mongo_client[os.environ["DB_NAME"]]
+MONGO_URL = os.environ.get("MONGO_URL")
+DB_NAME = os.environ.get("DB_NAME")
+
+
+class MissingDatabase:
+    def __getattr__(self, name):
+        raise HTTPException(
+            503,
+            "Backend database is not configured. Set MONGO_URL and DB_NAME in Vercel environment variables.",
+        )
+
+
+mongo_client = (
+    AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+    if MONGO_URL and DB_NAME
+    else None
+)
+db = mongo_client[DB_NAME] if mongo_client is not None else MissingDatabase()
+DB_CONFIGURED = mongo_client is not None
 
 
 def now_utc() -> datetime:
@@ -31,7 +48,10 @@ def verify_pw(pw: str, hashed: str) -> bool:
 
 
 def secret() -> str:
-    return os.environ["JWT_SECRET"]
+    jwt_secret = os.environ.get("JWT_SECRET")
+    if not jwt_secret:
+        raise HTTPException(503, "JWT_SECRET is not configured in Vercel environment variables.")
+    return jwt_secret
 
 
 def make_access(user_id: str, email: str, role: str) -> str:

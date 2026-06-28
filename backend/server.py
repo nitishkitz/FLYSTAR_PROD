@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core import db, doc_to_public, estimate_price, hash_pw, verify_pw, now_utc
+from core import DB_CONFIGURED, db, doc_to_public, estimate_price, hash_pw, verify_pw, now_utc
 from routes.auth import router as auth_router
 from routes.users import router as users_router
 from routes.shipments import router as shipments_router
@@ -143,9 +143,9 @@ async def seed_mock_data():
     ]
     users = {u["email"]: await _ensure_seed_user(u) for u in base_users}
 
-    demo_employee = await db.users.find_one({"email": os.environ["DEMO_EMPLOYEE_EMAIL"]})
-    demo_customer = await db.users.find_one({"email": os.environ["DEMO_CUSTOMER_EMAIL"]})
-    admin = await db.users.find_one({"email": os.environ["ADMIN_EMAIL"]})
+    demo_employee = await db.users.find_one({"email": os.environ.get("DEMO_EMPLOYEE_EMAIL", "employee@flystarcourier.com")})
+    demo_customer = await db.users.find_one({"email": os.environ.get("DEMO_CUSTOMER_EMAIL", "customer@flystarcourier.com")})
+    admin = await db.users.find_one({"email": os.environ.get("ADMIN_EMAIL", "admin@flystarcourier.com")})
 
     ravi = demo_employee or users["priya@flystarcourier.com"]
     priya = users["priya@flystarcourier.com"]
@@ -290,26 +290,37 @@ async def seed_mock_data():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await db.users.create_index("email", unique=True)
-    await db.shipments.create_index("awb", unique=True, sparse=True)
-    await db.shipments.create_index([("customer_id", 1), ("created_at", -1)])
-    await db.shipments.create_index([("assigned_employee_id", 1), ("created_at", -1)])
-    await db.shipments.create_index([("status", 1), ("created_at", -1)])
-    await db.login_attempts.create_index("identifier")
-    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    if not DB_CONFIGURED:
+        log.warning("MongoDB is not configured; API routes that require data will return 503.")
+        yield
+        return
 
-    seeds = [
-        {"email": os.environ["ADMIN_EMAIL"], "pw": os.environ["ADMIN_PASSWORD"],
-         "name": "Flystar Admin", "role": "admin", "phone": "+918125477584"},
-        {"email": os.environ["DEMO_EMPLOYEE_EMAIL"], "pw": os.environ["DEMO_EMPLOYEE_PASSWORD"],
-         "name": "Ravi Kumar", "role": "employee", "phone": "+919666145766"},
-        {"email": os.environ["DEMO_CUSTOMER_EMAIL"], "pw": os.environ["DEMO_CUSTOMER_PASSWORD"],
-         "name": "Demo Customer", "role": "customer", "phone": "+919999912345"},
-    ]
-    for s in seeds:
-        await _ensure_seed_user(s)
-    await seed_mock_data()
-    log.info("Startup complete.")
+    try:
+        await db.users.create_index("email", unique=True)
+        await db.shipments.create_index("awb", unique=True, sparse=True)
+        await db.shipments.create_index([("customer_id", 1), ("created_at", -1)])
+        await db.shipments.create_index([("assigned_employee_id", 1), ("created_at", -1)])
+        await db.shipments.create_index([("status", 1), ("created_at", -1)])
+        await db.login_attempts.create_index("identifier")
+        await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+
+        seeds = [
+            {"email": os.environ.get("ADMIN_EMAIL", "admin@flystarcourier.com"),
+             "pw": os.environ.get("ADMIN_PASSWORD", "Admin123!"),
+             "name": "Flystar Admin", "role": "admin", "phone": "+918125477584"},
+            {"email": os.environ.get("DEMO_EMPLOYEE_EMAIL", "employee@flystarcourier.com"),
+             "pw": os.environ.get("DEMO_EMPLOYEE_PASSWORD", "Employee123!"),
+             "name": "Ravi Kumar", "role": "employee", "phone": "+919666145766"},
+            {"email": os.environ.get("DEMO_CUSTOMER_EMAIL", "customer@flystarcourier.com"),
+             "pw": os.environ.get("DEMO_CUSTOMER_PASSWORD", "Customer123!"),
+             "name": "Demo Customer", "role": "customer", "phone": "+919999912345"},
+        ]
+        for s in seeds:
+            await _ensure_seed_user(s)
+        await seed_mock_data()
+        log.info("Startup complete.")
+    except Exception:
+        log.exception("Startup database initialization failed; continuing so health checks can report status.")
     yield
 
 
@@ -334,4 +345,9 @@ app.include_router(analytics_router, prefix="/api")
 
 @app.get("/api/")
 async def root():
-    return {"status": "ok", "service": "Flystar Ops API"}
+    return {
+        "status": "ok" if DB_CONFIGURED else "configuration_required",
+        "service": "Flystar Ops API",
+        "database_configured": DB_CONFIGURED,
+        "jwt_configured": bool(os.environ.get("JWT_SECRET")),
+    }
