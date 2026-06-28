@@ -7,8 +7,10 @@ import logging
 from datetime import timedelta
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pymongo.errors import PyMongoError
 
 from core import DB_CONFIGURED, db, doc_to_public, estimate_price, hash_pw, verify_pw, now_utc
 from routes.auth import router as auth_router
@@ -326,6 +328,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, title="Flystar Ops API")
 
+
+@app.exception_handler(PyMongoError)
+async def mongo_exception_handler(request: Request, exc: PyMongoError):
+    log.exception("MongoDB request failed")
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": (
+                "Database is not reachable from the backend. Check MONGO_URL and allow Vercel "
+                "outbound connections in MongoDB Atlas Network Access."
+            )
+        },
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -345,9 +361,17 @@ app.include_router(analytics_router, prefix="/api")
 
 @app.get("/api/")
 async def root():
+    database_reachable = False
+    if DB_CONFIGURED:
+        try:
+            await db.command("ping")
+            database_reachable = True
+        except PyMongoError:
+            log.exception("MongoDB ping failed")
     return {
-        "status": "ok" if DB_CONFIGURED else "configuration_required",
+        "status": "ok" if database_reachable else "configuration_required",
         "service": "Flystar Ops API",
         "database_configured": DB_CONFIGURED,
+        "database_reachable": database_reachable,
         "jwt_configured": bool(os.environ.get("JWT_SECRET")),
     }
